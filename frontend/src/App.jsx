@@ -16,6 +16,8 @@ export default function App() {
   const [loginUser, setLoginUser] = useState('paramedico.soto');
   const [loginPass, setLoginPass] = useState('urgencia2026');
   const [deviceNode, setDeviceNode] = useState('Ambulancia Móvil 07 — Ruta Sur (Tablet Ruggerizada)');
+  const [showTriageFormDrawer, setShowTriageFormDrawer] = useState(false);
+  const [showMutableFormDrawer, setShowMutableFormDrawer] = useState(false);
 
   const [vitalsForm, setVitalsForm] = useState({
     heart_rate_bpm: 124,
@@ -267,6 +269,44 @@ export default function App() {
         </div>
       </header>
 
+      {/* BARRA DE ERGONOMÍA COGNITIVA (Sección 2.2 #4: <= 7 elementos simultáneos) Y SIMULADOR RESPONSIVO */}
+      <div className="ergonomics-bar">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>
+            🧠 Ergonomía Cognitiva (Sección 2.2 #4):
+          </span>
+          <button
+            type="button"
+            className={`device-pill ${vm.compactClinicalMode ? 'active' : ''}`}
+            onClick={() => vm.setCompactClinicalMode(!vm.compactClinicalMode)}
+          >
+            {vm.compactClinicalMode
+              ? '✔ Modo Foco Urgencia Activo (≤ 7 Elementos · Divulgación Progresiva)'
+              : '☰ Vista Técnica Expandida (Todos los Controles Visibles)'}
+          </button>
+        </div>
+
+        <div className="device-pill-group">
+          <span style={{ color: 'var(--text-secondary)', fontWeight: 600, alignSelf: 'center', marginRight: '0.25rem' }}>
+            📐 Vista Dispositivo (ADR-01):
+          </span>
+          {[
+            { id: 'AUTO', label: '🖥 Automático (100%)' },
+            { id: 'TABLET_820', label: '📟 Tablet Ambulancia (820px)' },
+            { id: 'MOBILE_390', label: '📱 Celular Médico (390px)' },
+          ].map((vp) => (
+            <button
+              key={vp.id}
+              type="button"
+              className={`device-pill ${vm.viewportMode === vp.id ? 'active' : ''}`}
+              onClick={() => vm.setViewportMode(vp.id)}
+            >
+              {vp.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* PESTAÑAS DE NAVEGACIÓN (3 Mockups Evaluación 1 + Ledger Forense) */}
       <nav className="nav-tabs">
         <button
@@ -303,7 +343,7 @@ export default function App() {
       </nav>
 
       {/* CONTENIDO PRINCIPAL */}
-      <main className="workspace-container">
+      <main className={`workspace-container viewport-frame-${vm.viewportMode}`}>
         {/* Banner de retroalimentación de operaciones, validaciones y errores */}
         {vm.notification && (
           <div className={`notification-banner ${vm.notification.type}`}>
@@ -434,7 +474,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* Columna Derecha: Formulario de Captura de Triage y Signos Vitales */}
+            {/* Columna Derecha: Formulario de Captura de Triage y Signos Vitales (Con Divulgación Progresiva Sección 2.2 #4) */}
             <div className="clinical-card">
               <div className="card-header">
                 <div className="card-title">
@@ -443,13 +483,40 @@ export default function App() {
                 <span className="badge badge-blue">Idempotencia UUID</span>
               </div>
 
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  vm.submitVitalSigns(vitalsForm);
-                }}
-              >
-                <div className="grid-vitals">
+              {vm.compactClinicalMode && !showTriageFormDrawer ? (
+                <div style={{ textAlign: 'center', padding: '1.2rem 0.5rem' }}>
+                  <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+                    <strong>Modo Foco Urgencia Activo (Sección 2.2 #4):</strong> Se muestran en pantalla únicamente los{' '}
+                    <strong>≤ 7 indicadores vitales de decisión inmediata</strong> para reducir la fatiga cognitiva en
+                    turnos de 12 horas. El formulario de ingreso se despliega bajo demanda (divulgación progresiva).
+                  </p>
+                  <button
+                    type="button"
+                    className="btn-tactile btn-danger"
+                    onClick={() => setShowTriageFormDrawer(true)}
+                  >
+                    ➕ Abrir Formulario de Nuevo Triage / Signos Vitales
+                  </button>
+                </div>
+              ) : (
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    vm.submitVitalSigns(vitalsForm);
+                  }}
+                >
+                  {vm.compactClinicalMode && (
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.6rem' }}>
+                      <button
+                        type="button"
+                        className="device-pill"
+                        onClick={() => setShowTriageFormDrawer(false)}
+                      >
+                        ▲ Minimizar Formulario (Modo Foco)
+                      </button>
+                    </div>
+                  )}
+                  <div className="grid-vitals">
                   <div className="form-group">
                     <label className="form-label">Frecuencia Cardíaca (20 - 260 lpm)</label>
                     <input
@@ -558,6 +625,7 @@ export default function App() {
                   </button>
                 </div>
               </form>
+              )}
             </div>
           </div>
         )}
@@ -629,15 +697,55 @@ export default function App() {
                   escritura se congela y se envía a la <strong>Cola de Arbitraje Clínico</strong>.
                 </p>
 
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const expectedVer = mutableForm.simulate_stale_version
-                      ? Math.max(1, patient.version - 1)
-                      : patient.version;
-                    vm.updateMutableField(mutableForm.field_name, mutableForm.new_value, expectedVer);
-                  }}
-                >
+                {vm.compactClinicalMode && !showMutableFormDrawer ? (
+                  <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      className="btn-tactile btn-primary"
+                      onClick={() => setShowMutableFormDrawer(true)}
+                    >
+                      ➕ Editar Alergia / Diagnóstico (Divulgación Progresiva)
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-tactile btn-warning"
+                      onClick={async () => {
+                        await vm.updateMutableField(
+                          'allergies',
+                          'Penicilina (Anafilaxia); Sulfas; Contraste Yodado (actualizado en Clínica)',
+                          patient.version
+                        );
+                        await vm.updateMutableField(
+                          'allergies',
+                          'Penicilina (Anafilaxia); Sulfas; Látex (agregado sin red en Ambulancia 07)',
+                          1
+                        );
+                      }}
+                    >
+                      ⚡ Demostrar Conflicto Ambulancia vs Clínica (1-Click ADR-05)
+                    </button>
+                  </div>
+                ) : (
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const expectedVer = mutableForm.simulate_stale_version
+                        ? Math.max(1, patient.version - 1)
+                        : patient.version;
+                      vm.updateMutableField(mutableForm.field_name, mutableForm.new_value, expectedVer);
+                    }}
+                  >
+                    {vm.compactClinicalMode && (
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.5rem' }}>
+                        <button
+                          type="button"
+                          className="device-pill"
+                          onClick={() => setShowMutableFormDrawer(false)}
+                        >
+                          ▲ Minimizar Editor
+                        </button>
+                      </div>
+                    )}
                   <div className="form-group">
                     <label className="form-label">Campo Clínico Mutable a Modificar</label>
                     <select
@@ -707,6 +815,7 @@ export default function App() {
                     </button>
                   </div>
                 </form>
+                )}
               </div>
 
               {/* Cola de Arbitraje Clínico */}

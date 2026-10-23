@@ -31,8 +31,10 @@ export function useClinicalViewModel() {
   const [demoUsers, setDemoUsers] = useState([]);
   const [authError, setAuthError] = useState(null);
 
-  // 2. Estado de Accesibilidad y Conectividad Offline-First (Sección 2.2 y ADR-02 / ADR-04)
+  // 2. Estado de Accesibilidad, Divulgación Progresiva (Ley de Miller <= 7 elementos) y Conectividad Offline-First
   const [highContrastAAA, setHighContrastAAA] = useState(false); // Solución Problema Crítico #1 (WCAG 2.2 AAA 7:1)
+  const [compactClinicalMode, setCompactClinicalMode] = useState(true); // Solución Problema Crítico #4 (Divulgación Progresiva / Modo Foco <= 7 elementos)
+  const [viewportMode, setViewportMode] = useState('AUTO'); // AUTO | MOBILE_390 | TABLET_820 | DESKTOP_FULL
   const [isOfflineTunnel, setIsOfflineTunnel] = useState(false); // Simulador de pérdida de señal en túnel
   const [outboxQueue, setOutboxQueue] = useState(() => getOutboxQueue());
   const [episodeState, setEpisodeState] = useState('CONFIRMADO_EN_SERVIDOR'); // BORRADOR | ENCOLADO_OUTBOX | TRANSMITIENDO | CONFIRMADO_EN_SERVIDOR
@@ -329,6 +331,8 @@ export function useClinicalViewModel() {
     demoUsers,
     authError,
     highContrastAAA,
+    compactClinicalMode,
+    viewportMode,
     isOfflineTunnel,
     outboxQueue,
     episodeState,
@@ -344,6 +348,8 @@ export function useClinicalViewModel() {
 
     // Comandos del ViewModel
     setHighContrastAAA,
+    setCompactClinicalMode,
+    setViewportMode,
     setSelectedPatientId,
     setActiveTab,
     setNotification,
