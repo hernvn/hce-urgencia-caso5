@@ -66,7 +66,7 @@ export default function App() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+          <div className="top-bar-actions">
             <button
               type="button"
               className={`btn-tactile ${arch ? 'btn-warning' : ''}`}
@@ -253,11 +253,10 @@ export default function App() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', flexWrap: 'wrap' }}>
+        <div className="top-bar-actions">
           {/* Selector de Paciente */}
           <select
-            className="form-select"
-            style={{ minHeight: '48px', width: 'auto' }}
+            className="form-select patient-select"
             value={vm.selectedPatientId}
             onChange={(e) => vm.setSelectedPatientId(Number(e.target.value))}
           >

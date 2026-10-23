@@ -50,7 +50,12 @@
   padding: 0;
 }
 
-body {
+html,
+body,
+#root {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
   background-color: var(--bg-primary);
   color: var(--text-primary);
   font-family: var(--font-sans);
@@ -60,6 +65,9 @@ body {
 
 .app-shell {
   min-height: 100vh;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
   background-color: var(--bg-primary);
   color: var(--text-primary);
   display: flex;
@@ -76,34 +84,67 @@ body {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 1rem;
+  width: 100%;
+  max-width: 100%;
 }
 
 .brand-block {
   display: flex;
   align-items: center;
   gap: 0.85rem;
+  min-width: 0;
+  max-width: 100%;
+  flex: 1 1 280px;
+}
+
+.brand-block > div {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .brand-badge {
   background: linear-gradient(135deg, #ef4444, #b91c1c);
   color: #fff;
   font-weight: 800;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   padding: 0.45rem 0.7rem;
   border-radius: 8px;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .brand-title {
   font-size: 1.05rem;
   font-weight: 700;
   letter-spacing: -0.01em;
+  word-break: break-word;
 }
 
 .brand-subtitle {
   font-size: 0.78rem;
   color: var(--text-secondary);
   font-family: var(--font-mono);
+  word-break: break-word;
+}
+
+.top-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.patient-select {
+  min-height: 48px;
+  width: auto;
+  max-width: min(360px, 100%);
+  min-width: 0;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 /* Botones táctiles >= 48px de alto para uso con guantes de nitrilo (Problema Crítico #3) */
@@ -279,62 +320,22 @@ body {
   display: grid;
   grid-template-columns: 1.25fr 1fr;
   gap: 1.25rem;
+  width: 100%;
+  max-width: 100%;
+}
+
+.grid-2col > *,
+.grid-vitals > * {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .grid-vitals {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 1rem;
-}
-
-@media (max-width: 1024px) {
-  .grid-2col {
-    grid-template-columns: 1fr;
-  }
-  .top-bar {
-    padding: 0.75rem 1rem;
-  }
-  .workspace-container {
-    padding: 1rem;
-  }
-}
-
-@media (max-width: 640px) {
-  .grid-vitals {
-    grid-template-columns: 1fr;
-  }
-  .top-bar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .top-bar > div {
-    width: 100%;
-    justify-content: space-between;
-  }
-  .btn-tactile {
-    width: 100%;
-    min-height: 52px; /* Aún más cómodo para pantallas táctiles de celular con guantes */
-  }
-  .nav-tabs {
-    padding: 0.5rem 0.75rem;
-    gap: 0.4rem;
-  }
-  .nav-tab {
-    padding: 0.5rem 0.85rem;
-    font-size: 0.82rem;
-    white-space: nowrap;
-  }
-  .vital-value {
-    font-size: 2rem;
-  }
-  .clinical-card {
-    padding: 0.95rem;
-  }
-  .card-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.5rem;
-  }
+  width: 100%;
+  max-width: 100%;
 }
 
 /* Cards & Panels */
@@ -343,6 +344,8 @@ body {
   border: 1px solid var(--border-subtle);
   border-radius: 12px;
   padding: 1.25rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .clinical-card.critical-border {
@@ -357,6 +360,8 @@ body {
   margin-bottom: 1rem;
   padding-bottom: 0.65rem;
   border-bottom: 1px solid var(--border-subtle);
+  gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .card-title {
@@ -365,6 +370,7 @@ body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  word-break: break-word;
 }
 
 /* Vital Sign Readouts (Fiel al Mockup 1: Panel de Urgencia) */
@@ -376,6 +382,8 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .vital-tile.critical {
@@ -419,6 +427,9 @@ body {
   font-size: 0.75rem;
   font-weight: 700;
   font-family: var(--font-mono);
+  max-width: 100%;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .badge-red {
@@ -451,6 +462,8 @@ body {
   flex-direction: column;
   gap: 0.35rem;
   margin-bottom: 0.85rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .form-label {
@@ -461,6 +474,9 @@ body {
 
 .form-input, .form-select, .form-textarea {
   min-height: 48px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   padding: 0.65rem 0.85rem;
   border-radius: 8px;
   border: 1px solid var(--border-subtle);
@@ -468,6 +484,14 @@ body {
   color: var(--text-primary);
   font-family: var(--font-sans);
   font-size: 0.95rem;
+}
+
+.patient-select {
+  width: auto;
+  max-width: min(360px, 100%);
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .form-textarea {
@@ -489,6 +513,8 @@ body {
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
+  max-width: 100%;
+  word-break: break-word;
 }
 
 .notification-banner.critical, .notification-banner.error {
@@ -526,6 +552,7 @@ body {
   font-size: 0.73rem;
 }
 
+code,
 .hash-code {
   font-family: var(--font-mono);
   font-size: 0.76rem;
@@ -533,4 +560,89 @@ body {
   background: rgba(15, 23, 42, 0.75);
   padding: 0.2rem 0.45rem;
   border-radius: 4px;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+}
+
+/* Media Queries de Responsividad Multi-Dispositivo (Desktop -> Tablet 1024px -> Celular 640px) */
+@media (max-width: 1024px) {
+  .grid-2col {
+    grid-template-columns: 1fr;
+  }
+  .top-bar {
+    padding: 0.75rem 1rem;
+  }
+  .top-bar-actions {
+    width: 100%;
+  }
+  .patient-select {
+    width: 100%;
+    max-width: 100%;
+    flex: 1 1 100%;
+  }
+  .workspace-container {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .grid-vitals {
+    grid-template-columns: 1fr;
+  }
+  .top-bar {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0.75rem 0.85rem;
+    gap: 0.75rem;
+  }
+  .brand-block {
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .top-bar-actions {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+  .patient-select {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 1 1 auto;
+  }
+  .btn-tactile {
+    width: 100%;
+    max-width: 100%;
+    min-height: 52px; /* Aún más cómodo para pantallas táctiles de celular con guantes */
+  }
+  .ergonomics-bar {
+    padding: 0.5rem 0.85rem;
+  }
+  .nav-tabs {
+    padding: 0.5rem 0.75rem;
+    gap: 0.4rem;
+    width: 100%;
+    max-width: 100%;
+  }
+  .nav-tab {
+    padding: 0.5rem 0.85rem;
+    font-size: 0.82rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .workspace-container {
+    padding: 0.75rem;
+  }
+  .vital-value {
+    font-size: 2rem;
+  }
+  .clinical-card {
+    padding: 0.95rem;
+  }
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
 }
