@@ -1,21 +1,22 @@
 /**
  * CAPA VIEW (MVVM — ADR-01)
- * Reproduce fielmente los 3 Mockups de la Evaluación 1 (Sección 2.5, pág. 6):
- * 1. Panel de Urgencia (Ambulancia Móvil 07 — Signos Vitales, Alerta SpO2 Crítica, Cola Outbox Offline-First)
- * 2. Ficha Clínica Interoperable FHIR R4 (Alergias Medicamentosas, Concurrencia Optimista y Arbitraje Clínico ADR-05)
- * 3. Teleconsulta de Urgencia Cifrada (WebRTC SFU + Canal de Subtitulado en Vivo + Órdenes Médicas ADR-03)
- * + 4. Consola de Auditoría Forense Inmutable (Verificación de Cadena Criptográfica SHA-256 ADR-03 / ADR-08)
+ * Incluye dos modos conmutables en tiempo real:
+ * 1. MODO PRODUCCIÓN CLÍNICA (Por defecto): Interfaz médica limpia, 100% enfocada en el usuario final
+ *    (Paramédico, Médico de Urgencia, Teleconsultor, Oficial de Privacidad), sin jerga de ingeniería ni notas de ADRs.
+ * 2. MODO RAYOS X ARQUITECTÓNICO (Docente / Defensa): Muestra las etiquetas de trazabilidad hacia los ADR-01..08,
+ *    los patrones de diseño aplicados (MVVM, Strategy, Observer, Repository) y botones de simulación de fallos.
  */
 import React, { useState } from 'react';
 import { useClinicalViewModel } from './viewmodels/useClinicalViewModel';
 
 export default function App() {
   const vm = useClinicalViewModel();
+  const arch = vm.showArchitectureNotes;
 
-  // Estado local de formularios de entrada (efímero de UI según ADR-02)
+  // Estado local de formularios de entrada
   const [loginUser, setLoginUser] = useState('paramedico.soto');
   const [loginPass, setLoginPass] = useState('urgencia2026');
-  const [deviceNode, setDeviceNode] = useState('Ambulancia Móvil 07 — Ruta Sur (Tablet Ruggerizada)');
+  const [deviceNode, setDeviceNode] = useState('Ambulancia Móvil 07 — Ruta Sur');
   const [showTriageFormDrawer, setShowTriageFormDrawer] = useState(false);
   const [showMutableFormDrawer, setShowMutableFormDrawer] = useState(false);
 
@@ -26,7 +27,7 @@ export default function App() {
     diastolic_bp: 56,
     temperature_c: 38.8,
     glasgow_score: 14,
-    clinical_notes: 'Paciente con taquipnea durante cruce de túnel urbano. Se ajusta O2 a 6 L/min.',
+    clinical_notes: 'Paciente con taquipnea durante traslado. Se ajusta O2 suplementario a 6 L/min.',
   });
 
   const [mutableForm, setMutableForm] = useState({
@@ -37,93 +38,111 @@ export default function App() {
 
   const [orderForm, setOrderForm] = useState({
     order_type: 'FARMACO',
-    medication_or_action: 'Aspirina (Ácido Acetilsalicílico) 250mg + Nitroglicerina 0.4mg',
+    medication_or_action: 'Aspirina 250mg + Nitroglicerina 0.4mg',
     dosage_and_route: '250mg VO masticable + 0.4mg sublingual',
     clinical_justification: 'Protocolo Síndrome Coronario Agudo en traslado de urgencia',
   });
 
   const [resolutionMap, setResolutionMap] = useState({});
 
-  const roleLabels = {
-    PARAMEDICO: 'Paramédico / TENS Prehospitalario',
-    MEDICO_URGENCIA: 'Médico Jefe de Urgencia (Clínica Destino)',
-    MEDICO_TELECONSULTOR: 'Médico Especialista Teleconsultor (SFU)',
-    AUDITOR_FORENSE: 'Oficial de Privacidad / Auditor Forense HIPAA',
-  };
-
   // =========================================================================
-  // PANTALLA DE AUTENTICACIÓN RBAC OAUTH2 / JWT (Requisito obligatorio 3.2)
+  // PANTALLA DE INICIO DE SESIÓN (Limpia en Modo Clínica / Explicada en Modo Rayos X)
   // =========================================================================
   if (!vm.session) {
     return (
       <div className={`app-shell ${vm.highContrastAAA ? 'theme-high-contrast-aaa' : ''}`}>
         <header className="top-bar">
           <div className="brand-block">
-            <span className="brand-badge">HCE · CASO 5</span>
+            <span className="brand-badge">RED SALUD · URGENCIA</span>
             <div>
               <div className="brand-title">
-                Plataforma de Historia Clínica Electrónica Interoperable y Telemedicina de Urgencia
+                Plataforma de Historia Clínica Electrónica y Telemedicina de Urgencia
               </div>
               <div className="brand-subtitle">
-                Arquitectura MVVM (React PWA) + Microservicios FastAPI FHIR R4 · SLA 99,999 % · HIPAA / HL7
+                {arch
+                  ? 'Arquitectura MVVM (React PWA) + Microservicios FastAPI FHIR R4 · SLA 99,999 % · HIPAA / HL7'
+                  : 'Sistema Integrado de Atención Prehospitalaria, Recepción Hospitalaria y Teleconsulta'}
               </div>
             </div>
           </div>
-          <button
-            type="button"
-            className="btn-tactile"
-            onClick={() => vm.setHighContrastAAA(!vm.highContrastAAA)}
-          >
-            {vm.highContrastAAA ? '☀ Modo Estándar Nocturno' : '👁 Alto Contraste Exterior AAA (7:1)'}
-          </button>
+
+          <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className={`btn-tactile ${arch ? 'btn-warning' : ''}`}
+              onClick={() => vm.setShowArchitectureNotes(!arch)}
+            >
+              {arch ? '🔬 Modo Rayos X Arquitectónico (Activo)' : '🏥 Vista Clínica de Producción (Limpia)'}
+            </button>
+            <button
+              type="button"
+              className="btn-tactile"
+              onClick={() => vm.setHighContrastAAA(!vm.highContrastAAA)}
+            >
+              {vm.highContrastAAA ? '☀ Modo Nocturno' : '👁 Alto Contraste Exterior'}
+            </button>
+          </div>
         </header>
 
-        <main className="workspace-container" style={{ maxWidth: '980px', marginTop: '1.5rem' }}>
+        <main className="workspace-container" style={{ maxWidth: '880px', marginTop: '1.75rem' }}>
           <div className="clinical-card">
             <div className="card-header">
               <div className="card-title">
-                🔐 Control de Acceso Basado en Roles (RBAC) — Autenticación OAuth2 / JWT (ADR-02 y ADR-08)
+                {arch
+                  ? '🔐 Control de Acceso Basado en Roles (RBAC) — Autenticación OAuth2 / JWT (ADR-02 y ADR-08)'
+                  : '🔐 Acceso Institucional para Personal de Salud Autorizado'}
               </div>
-              <span className="badge badge-blue">TLS 1.3 + JWT 15m + Credencial Offline 72h</span>
+              <span className="badge badge-blue">
+                {arch ? 'TLS 1.3 + JWT 15m + Credencial Offline 72h' : 'Conexión Cifrada'}
+              </span>
             </div>
 
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1.1rem' }}>
-              Seleccione rápidamente uno de los <strong>4 perfiles institucionales del Caso 5</strong> para verificar
-              los permisos diferenciados por rol, o ingrese las credenciales manualmente:
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '1rem' }}>
+              {arch
+                ? 'Seleccione uno de los 4 perfiles RBAC del Caso 5 para comprobar los permisos diferenciados por estamento:'
+                : 'Seleccione su perfil operativo o ingrese sus credenciales institucionales:'}
             </p>
 
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
-                gap: '0.75rem',
-                marginBottom: '1.35rem',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(195px, 1fr))',
+                gap: '0.7rem',
+                marginBottom: '1.25rem',
               }}
             >
               {[
                 {
                   user: 'paramedico.soto',
                   title: '🚑 Paramédico / TENS',
-                  desc: 'Camila Soto · Registra Triage, Signos Vitales y Opera Cola Offline Outbox',
-                  node: 'Ambulancia Móvil 07 — Ruta Sur (Tablet Ruggerizada)',
+                  desc: arch
+                    ? 'Camila Soto · Triage ESI y Cola Offline Outbox (ADR-02)'
+                    : 'Camila Soto · Unidad Móvil 07',
+                  node: 'Ambulancia Móvil 07 — Ruta Sur',
                 },
                 {
                   user: 'dr.valdivia',
                   title: '🏥 Médico de Urgencia',
-                  desc: 'Dr. Martín Valdivia · Ficha FHIR, Prescripción Segura y Arbitraje Clínico ADR-05',
-                  node: 'Clínica Alta Complejidad Central — Box Reanimación 01',
+                  desc: arch
+                    ? 'Dr. Martín Valdivia · Ficha FHIR, Recetas y Arbitraje ADR-05'
+                    : 'Dr. Martín Valdivia · Box Reanimación 01',
+                  node: 'Clínica Central — Box Reanimación 01',
                 },
                 {
                   user: 'dra.herrera',
                   title: '📡 Médico Teleconsultor',
-                  desc: 'Dra. Elena Herrera · Sala WebRTC SFU, Subtitulado en Vivo y Directivas Remotas',
-                  node: 'Estación Teleconsulta SFU-04 — Red Nacional',
+                  desc: arch
+                    ? 'Dra. Elena Herrera · Sala WebRTC SFU y Subtitulado en Vivo'
+                    : 'Dra. Elena Herrera · Centro Telemedicina',
+                  node: 'Estación Teleconsulta Sala 04',
                 },
                 {
                   user: 'auditor.hipaa',
-                  title: '🛡 Auditor Forense HIPAA',
-                  desc: 'Ing. Roberto Domínguez · Verificación Criptográfica SHA-256 Append-Only',
-                  node: 'Consola Aislada de Auditoría Forense (Segmento Sin Salida)',
+                  title: '🛡 Oficial de Privacidad',
+                  desc: arch
+                    ? 'Ing. Roberto Domínguez · Verificación Cadena SHA-256 (Observer)'
+                    : 'Ing. Roberto Domínguez · Auditoría Clínica',
+                  node: 'Unidad de Cumplimiento y Auditoría',
                 },
               ].map((preset) => (
                 <button
@@ -134,7 +153,7 @@ export default function App() {
                     flexDirection: 'column',
                     alignItems: 'flex-start',
                     textAlign: 'left',
-                    padding: '0.85rem',
+                    padding: '0.8rem',
                     borderColor: loginUser === preset.user ? 'var(--accent-blue)' : 'var(--border-subtle)',
                   }}
                   onClick={() => {
@@ -143,8 +162,8 @@ export default function App() {
                     setDeviceNode(preset.node);
                   }}
                 >
-                  <div style={{ fontWeight: 700, fontSize: '0.92rem' }}>{preset.title}</div>
-                  <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{preset.title}</div>
+                  <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
                     {preset.desc}
                   </div>
                 </button>
@@ -154,7 +173,7 @@ export default function App() {
             {vm.authError && (
               <div className="notification-banner error" style={{ marginBottom: '1rem' }}>
                 <div>
-                  <strong>Error de Autenticación:</strong> {vm.authError}
+                  <strong>Acceso rechazado:</strong> {vm.authError}
                 </div>
               </div>
             )}
@@ -167,7 +186,7 @@ export default function App() {
             >
               <div className="grid-2col">
                 <div className="form-group">
-                  <label className="form-label">Usuario Institucional (Practitioner ID)</label>
+                  <label className="form-label">Credencial Profesional</label>
                   <input
                     className="form-input"
                     value={loginUser}
@@ -176,7 +195,7 @@ export default function App() {
                   />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Contraseña (Demo: urgencia2026)</label>
+                  <label className="form-label">Contraseña Institucional</label>
                   <input
                     type="password"
                     className="form-input"
@@ -187,7 +206,9 @@ export default function App() {
                 </div>
               </div>
               <div className="form-group">
-                <label className="form-label">Terminal / Nodo de Borde Registrado (Epic-style Device Binding)</label>
+                <label className="form-label">
+                  {arch ? 'Terminal / Nodo de Borde Registrado (Device Binding)' : 'Unidad o Estación de Trabajo'}
+                </label>
                 <input
                   className="form-input"
                   value={deviceNode}
@@ -198,7 +219,7 @@ export default function App() {
 
               <div style={{ display: 'flex', gap: '0.8rem', marginTop: '0.5rem' }}>
                 <button type="submit" className="btn-tactile btn-primary" disabled={vm.loading}>
-                  {vm.loading ? 'Verificando firma JWT...' : 'Iniciar Sesión Segura en Plataforma HCE'}
+                  {vm.loading ? 'Autenticando...' : 'Ingresar a la Plataforma'}
                 </button>
               </div>
             </form>
@@ -220,15 +241,19 @@ export default function App() {
           <span className="brand-badge">UNIDAD MÓVIL 07 · EN RUTA</span>
           <div>
             <div className="brand-title">
-              HCE Interoperable FHIR R4 & Telemedicina de Urgencia
+              {arch
+                ? 'HCE Interoperable FHIR R4 & Telemedicina de Urgencia'
+                : 'Consola Clínica de Urgencia y Telemedicina'}
             </div>
             <div className="brand-subtitle">
-               Profesional: {user.full_name} · Rol: [{user.role}] · Máquina Estado Episodio: [{vm.episodeState}]
+              {arch
+                ? `Profesional: ${user.full_name} · Rol RBAC: [${user.role}] · Máquina Estado Episodio: [${vm.episodeState}]`
+                : `${user.full_name} · ${user.facility}`}
             </div>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', flexWrap: 'wrap' }}>
           {/* Selector de Paciente */}
           <select
             className="form-select"
@@ -238,92 +263,104 @@ export default function App() {
           >
             {vm.patients.map((p) => (
               <option key={p.id} value={p.id}>
-                Paciente: {p.full_name} ({p.rut}) — v{p.version}
+                Paciente: {p.full_name} ({p.rut}){arch ? ` — v${p.version}` : ''}
               </option>
             ))}
           </select>
 
-          {/* Conmutador Offline-First (ADR-02 y ADR-04) */}
+          {/* Conmutador de Conectividad */}
           <button
             type="button"
             className={`btn-tactile ${vm.isOfflineTunnel ? 'btn-warning' : 'btn-success'}`}
             onClick={vm.toggleOfflineTunnel}
           >
             {vm.isOfflineTunnel
-              ? `📡 OFFLINE (Túnel) · Cola Outbox: ${vm.outboxQueue.length}`
-              : '📶 ONLINE (Red 5G/mTLS Activa)'}
+              ? `📡 Sin Cobertura (${vm.outboxQueue.length} en espera)`
+              : '📶 En Línea'}
           </button>
 
-          {/* Conmutador de Alto Contraste WCAG 2.2 AAA (Sección 2.2 #1) */}
+          {/* Conmutador de Alto Contraste */}
           <button
             type="button"
             className="btn-tactile"
             onClick={() => vm.setHighContrastAAA(!vm.highContrastAAA)}
           >
-            {vm.highContrastAAA ? '☀ Contraste Normal' : '👁 Contraste AAA (7:1)'}
+            {vm.highContrastAAA ? '☀ Brillo Estándar' : '👁 Alto Contraste'}
+          </button>
+
+          {/* Conmutador Vista Clínica Limpia vs Modo Rayos X Arquitectónico */}
+          <button
+            type="button"
+            className={`btn-tactile ${arch ? 'btn-warning' : ''}`}
+            onClick={() => vm.setShowArchitectureNotes(!arch)}
+            title="Alternar entre interfaz limpia de usuario final y vista con explicaciones de arquitectura para evaluación docente"
+          >
+            {arch ? '🔬 Rayos X Arquitectura: ON' : '🔬 Rayos X Arquitectura: OFF'}
           </button>
 
           <button type="button" className="btn-tactile btn-danger" onClick={vm.logout}>
-            Cerrar Sesión
+            Salir
           </button>
         </div>
       </header>
 
-      {/* BARRA DE ERGONOMÍA COGNITIVA (Sección 2.2 #4: <= 7 elementos simultáneos) Y SIMULADOR RESPONSIVO */}
-      <div className="ergonomics-bar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>
-            🧠 Ergonomía Cognitiva (Sección 2.2 #4):
-          </span>
-          <button
-            type="button"
-            className={`device-pill ${vm.compactClinicalMode ? 'active' : ''}`}
-            onClick={() => vm.setCompactClinicalMode(!vm.compactClinicalMode)}
-          >
-            {vm.compactClinicalMode
-              ? '✔ Modo Foco Urgencia Activo (≤ 7 Elementos · Divulgación Progresiva)'
-              : '☰ Vista Técnica Expandida (Todos los Controles Visibles)'}
-          </button>
-        </div>
-
-        <div className="device-pill-group">
-          <span style={{ color: 'var(--text-secondary)', fontWeight: 600, alignSelf: 'center', marginRight: '0.25rem' }}>
-            📐 Vista Dispositivo (ADR-01):
-          </span>
-          {[
-            { id: 'AUTO', label: '🖥 Automático (100%)' },
-            { id: 'TABLET_820', label: '📟 Tablet Ambulancia (820px)' },
-            { id: 'MOBILE_390', label: '📱 Celular Médico (390px)' },
-          ].map((vp) => (
+      {/* BARRA DE HERRAMIENTAS DE DEMOSTRACIÓN ARQUITECTÓNICA (Solo visible si el usuario activa Rayos X Arquitectura) */}
+      {arch && (
+        <div className="ergonomics-bar">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <span style={{ color: 'var(--accent-amber)', fontWeight: 700 }}>
+              🔬 Modo Evaluación Docente Activo:
+            </span>
             <button
-              key={vp.id}
               type="button"
-              className={`device-pill ${vm.viewportMode === vp.id ? 'active' : ''}`}
-              onClick={() => vm.setViewportMode(vp.id)}
+              className={`device-pill ${vm.compactClinicalMode ? 'active' : ''}`}
+              onClick={() => vm.setCompactClinicalMode(!vm.compactClinicalMode)}
             >
-              {vp.label}
+              {vm.compactClinicalMode
+                ? '✔ Modo Foco Urgencia (≤ 7 Elementos · Divulgación Progresiva)'
+                : '☰ Formularios Expandidos'}
             </button>
-          ))}
-        </div>
-      </div>
+          </div>
 
-      {/* PESTAÑAS DE NAVEGACIÓN (3 Mockups Evaluación 1 + Ledger Forense) */}
+          <div className="device-pill-group">
+            <span style={{ color: 'var(--text-secondary)', fontWeight: 600, alignSelf: 'center', marginRight: '0.25rem' }}>
+              📐 Simular Dispositivo (ADR-01):
+            </span>
+            {[
+              { id: 'AUTO', label: '🖥 Escritorio (100%)' },
+              { id: 'TABLET_820', label: '📟 Tablet Ambulancia (820px)' },
+              { id: 'MOBILE_390', label: '📱 Celular Médico (390px)' },
+            ].map((vp) => (
+              <button
+                key={vp.id}
+                type="button"
+                className={`device-pill ${vm.viewportMode === vp.id ? 'active' : ''}`}
+                onClick={() => vm.setViewportMode(vp.id)}
+              >
+                {vp.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* PESTAÑAS DE NAVEGACIÓN */}
       <nav className="nav-tabs">
         <button
           type="button"
           className={`nav-tab ${vm.activeTab === 'URGENCIA' ? 'active' : ''}`}
           onClick={() => vm.setActiveTab('URGENCIA')}
         >
-          🚨 1. Panel de Urgencia (Telemetría & Triage)
+          🚨 Panel de Urgencia
         </button>
         <button
           type="button"
           className={`nav-tab ${vm.activeTab === 'FICHA_FHIR' ? 'active' : ''}`}
           onClick={() => vm.setActiveTab('FICHA_FHIR')}
         >
-          📋 2. Ficha Clínica FHIR R4 & Arbitraje ADR-05
+          📋 Ficha Clínica
           {vm.pendingConflicts.length > 0 && (
-            <span className="badge badge-red">{vm.pendingConflicts.length} Conflicto</span>
+            <span className="badge badge-red">{vm.pendingConflicts.length} Alerta</span>
           )}
         </button>
         <button
@@ -331,20 +368,20 @@ export default function App() {
           className={`nav-tab ${vm.activeTab === 'TELECONSULTA' ? 'active' : ''}`}
           onClick={() => vm.setActiveTab('TELECONSULTA')}
         >
-          📹 3. Teleconsulta SFU & Órdenes Médicas
+          📹 Teleconsulta y Indicaciones
         </button>
         <button
           type="button"
           className={`nav-tab ${vm.activeTab === 'AUDITORIA' ? 'active' : ''}`}
           onClick={() => vm.setActiveTab('AUDITORIA')}
         >
-          🔗 4. Ledger Forense SHA-256 (Inmutable)
+          {arch ? '🔗 Ledger Forense SHA-256 (Observer)' : '🛡 Registro de Auditoría'}
         </button>
       </nav>
 
       {/* CONTENIDO PRINCIPAL */}
       <main className={`workspace-container viewport-frame-${vm.viewportMode}`}>
-        {/* Banner de retroalimentación de operaciones, validaciones y errores */}
+        {/* Banner de notificaciones */}
         {vm.notification && (
           <div className={`notification-banner ${vm.notification.type}`}>
             <div>
@@ -365,16 +402,16 @@ export default function App() {
         )}
 
         {/* =====================================================================
-            VISTA 1: PANEL DE URGENCIA (Mockup 1 Evaluación 1 + Patrón Strategy + Outbox)
+            VISTA 1: PANEL DE URGENCIA (Mockup 1 Evaluación 1)
            ===================================================================== */}
         {vm.activeTab === 'URGENCIA' && patient && (
           <div className="grid-2col">
-            {/* Columna Izquierda: Monitor Multiparámetro en Tiempo Real (Mockup 1) */}
+            {/* Columna Izquierda: Monitor Multiparámetro en Tiempo Real */}
             <div className="clinical-card">
               <div className="card-header">
                 <div>
-                  <div className="brand-subtitle">UNIDAD MÓVIL 07 · EN RUTA</div>
-                  <div className="card-title" style={{ fontSize: '1.25rem' }}>
+                  <div className="brand-subtitle">UNIDAD MÓVIL 07 · MONITORIZACIÓN EN RUTA</div>
+                  <div className="card-title" style={{ fontSize: '1.22rem' }}>
                     Panel de Urgencia — {patient.full_name} ({patient.age} años)
                   </div>
                 </div>
@@ -390,7 +427,7 @@ export default function App() {
                     <span className="vital-value green">{vitals ? vitals.heart_rate_bpm : '--'}</span>
                     <span className="vital-unit">lpm</span>
                   </div>
-                  <span className="brand-subtitle"> Derivación II · Ritmo sinusal taquicárdico</span>
+                  <span className="brand-subtitle">Derivación II · Ritmo sinusal</span>
                 </div>
 
                 <div className={`vital-tile ${vitals && vitals.spo2_percent < 90 ? 'critical' : ''}`}>
@@ -402,24 +439,24 @@ export default function App() {
                   </div>
                   <span className="badge badge-red">
                     {vitals && vitals.spo2_percent < 90
-                      ? '⚠ DOBLE CODIFICACIÓN: HIPOXEMIA CRÍTICA (<90%)'
-                      : 'Rango aceptable'}
+                      ? '⚠ SpO₂ Crítica (< 90%) — Intervención requerida'
+                      : 'Rango normal'}
                   </span>
                 </div>
 
                 <div className="vital-tile">
-                  <span className="vital-label">🩸 PRESIÓN ARTERIAL NO INVASIVA</span>
+                  <span className="vital-label">🩸 PRESIÓN ARTERIAL</span>
                   <div>
                     <span className="vital-value green">
                       {vitals ? `${vitals.systolic_bp}/${vitals.diastolic_bp}` : '--/--'}
                     </span>
                     <span className="vital-unit">mmHg</span>
                   </div>
-                  <span className="brand-subtitle">PAM calculada en monitoreo continuo</span>
+                  <span className="brand-subtitle"> Monitoreo no invasivo continuo</span>
                 </div>
 
                 <div className="vital-tile">
-                  <span className="vital-label">🌡 TEMPERATURA CORPORAL</span>
+                  <span className="vital-label">🌡 TEMPERATURA</span>
                   <div>
                     <span className="vital-value amber">{vitals ? vitals.temperature_c : '--'}</span>
                     <span className="vital-unit">°C</span>
@@ -428,74 +465,85 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Bloque de Alerta Crítica lateral del Mockup 1 */}
+              {/* Alerta Clínica */}
               {vitals && (
                 <div
                   className={`clinical-card ${vitals.is_critical ? 'critical-border' : ''}`}
                   style={{ marginTop: '1rem' }}
                 >
-                  <div style={{ fontWeight: 800, color: '#fca5a5', fontSize: '0.95rem' }}>
-                    ⚡ Evaluación Automática Patrón Strategy (EmergencySeverityIndexStrategy):
+                  <div style={{ fontWeight: 800, color: '#fca5a5', fontSize: '0.93rem' }}>
+                    {arch
+                      ? '⚡ Evaluación Automática Patrón Strategy (EmergencySeverityIndexStrategy):'
+                      : '⚡ Alerta Clínica de Triage:'}
                   </div>
-                  <div style={{ fontSize: '0.9rem', marginTop: '0.35rem' }}>{vitals.clinical_alerts}</div>
-                  <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.4rem' }}>
-                    Registrado por: {vitals.recorded_by} · Nodo: {vitals.origin_node} · UUID Idempotencia:{' '}
-                    <code>{vitals.idempotency_key}</code>
+                  <div style={{ fontSize: '0.9rem', marginTop: '0.3rem' }}>{vitals.clinical_alerts}</div>
+                  <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', marginTop: '0.35rem' }}>
+                    Registrado por: {vitals.recorded_by} · Unidad: {vitals.origin_node}
+                    {arch && (
+                      <>
+                        {' '}· UUID Idempotencia: <code>{vitals.idempotency_key}</code>
+                      </>
+                    )}
                   </div>
                 </div>
               )}
 
-              {/* Estado de la Cola Store-and-Forward (ADR-02 y ADR-04) */}
-              <div
-                style={{
-                  marginTop: '1rem',
-                  padding: '0.85rem 1rem',
-                  borderRadius: '8px',
-                  backgroundColor: 'var(--bg-panel)',
-                  border: '1px solid var(--border-subtle)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                }}
-              >
-                <div>
-                  <strong style={{ color: 'var(--accent-amber)' }}>
-                    {vm.isOfflineTunnel ? 'MODO OFFLINE ACTIVO (ADR-02 / ADR-04)' : 'COLA OUTBOX SINCRONIZADA'}
-                  </strong>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                    Eventos clínicos pendientes en IndexedDB/Outbox local: <strong>{vm.outboxQueue.length}</strong>
+              {/* Estado de sincronización local si está desconectado o si Modo Rayos X está activo */}
+              {(vm.isOfflineTunnel || vm.outboxQueue.length > 0 || arch) && (
+                <div
+                  style={{
+                    marginTop: '0.9rem',
+                    padding: '0.75rem 1rem',
+                    borderRadius: '8px',
+                    backgroundColor: 'var(--bg-panel)',
+                    border: '1px solid var(--border-subtle)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <div>
+                    <strong style={{ color: 'var(--accent-amber)', fontSize: '0.86rem' }}>
+                      {vm.isOfflineTunnel
+                        ? 'Modo Sin Cobertura Activo (Guardado Local)'
+                        : 'Sincronización con Hospital al Día'}
+                    </strong>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                      Registros pendientes de envío: <strong>{vm.outboxQueue.length}</strong>
+                      {arch && ' (Cola Transactional Outbox ADR-02 / ADR-04)'}
+                    </div>
                   </div>
+                  {vm.outboxQueue.length > 0 && !vm.isOfflineTunnel && (
+                    <button type="button" className="btn-tactile btn-primary" onClick={vm.drainOutboxQueue}>
+                      Enviar Pendientes ({vm.outboxQueue.length})
+                    </button>
+                  )}
                 </div>
-                {vm.outboxQueue.length > 0 && !vm.isOfflineTunnel && (
-                  <button type="button" className="btn-tactile btn-primary" onClick={vm.drainOutboxQueue}>
-                    Sincronizar Ahora ({vm.outboxQueue.length})
-                  </button>
-                )}
-              </div>
+              )}
             </div>
 
-            {/* Columna Derecha: Formulario de Captura de Triage y Signos Vitales (Con Divulgación Progresiva Sección 2.2 #4) */}
+            {/* Columna Derecha: Registro de Signos Vitales */}
             <div className="clinical-card">
               <div className="card-header">
                 <div className="card-title">
-                  📝 Captura de Signos Vitales y Triage (Append-Only CRDT G-Set — ADR-05)
+                  {arch
+                    ? '📝 Captura de Signos Vitales y Triage (Append-Only CRDT G-Set — ADR-05)'
+                    : '📝 Ingreso de Signos Vitales y Control de Triage'}
                 </div>
-                <span className="badge badge-blue">Idempotencia UUID</span>
+                {arch && <span className="badge badge-blue">Idempotencia UUID</span>}
               </div>
 
               {vm.compactClinicalMode && !showTriageFormDrawer ? (
                 <div style={{ textAlign: 'center', padding: '1.2rem 0.5rem' }}>
                   <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-                    <strong>Modo Foco Urgencia Activo (Sección 2.2 #4):</strong> Se muestran en pantalla únicamente los{' '}
-                    <strong>≤ 7 indicadores vitales de decisión inmediata</strong> para reducir la fatiga cognitiva en
-                    turnos de 12 horas. El formulario de ingreso se despliega bajo demanda (divulgación progresiva).
+                    Vista enfocada en monitorización crítica. Presione el botón para registrar un nuevo control de signos vitales.
                   </p>
                   <button
                     type="button"
                     className="btn-tactile btn-danger"
                     onClick={() => setShowTriageFormDrawer(true)}
                   >
-                    ➕ Abrir Formulario de Nuevo Triage / Signos Vitales
+                    ➕ Nuevo Control de Signos Vitales
                   </button>
                 </div>
               ) : (
@@ -512,153 +560,157 @@ export default function App() {
                         className="device-pill"
                         onClick={() => setShowTriageFormDrawer(false)}
                       >
-                        ▲ Minimizar Formulario (Modo Foco)
+                        ▲ Ocultar Formulario
                       </button>
                     </div>
                   )}
                   <div className="grid-vitals">
-                  <div className="form-group">
-                    <label className="form-label">Frecuencia Cardíaca (20 - 260 lpm)</label>
-                    <input
-                      type="number"
-                      className="form-input"
-                      value={vitalsForm.heart_rate_bpm}
-                      onChange={(e) =>
-                        setVitalsForm({ ...vitalsForm, heart_rate_bpm: e.target.value })
-                      }
-                      required
-                    />
+                    <div className="form-group">
+                      <label className="form-label">Frecuencia Cardíaca (lpm)</label>
+                      <input
+                        type="number"
+                        className="form-input"
+                        value={vitalsForm.heart_rate_bpm}
+                        onChange={(e) =>
+                          setVitalsForm({ ...vitalsForm, heart_rate_bpm: e.target.value })
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Saturación SpO₂ (%)</label>
+                      <input
+                        type="number"
+                        className="form-input"
+                        value={vitalsForm.spo2_percent}
+                        onChange={(e) =>
+                          setVitalsForm({ ...vitalsForm, spo2_percent: e.target.value })
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">PA Sistólica (mmHg)</label>
+                      <input
+                        type="number"
+                        className="form-input"
+                        value={vitalsForm.systolic_bp}
+                        onChange={(e) =>
+                          setVitalsForm({ ...vitalsForm, systolic_bp: e.target.value })
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">PA Diastólica (mmHg)</label>
+                      <input
+                        type="number"
+                        className="form-input"
+                        value={vitalsForm.diastolic_bp}
+                        onChange={(e) =>
+                          setVitalsForm({ ...vitalsForm, diastolic_bp: e.target.value })
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Temperatura (°C)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        className="form-input"
+                        value={vitalsForm.temperature_c}
+                        onChange={(e) =>
+                          setVitalsForm({ ...vitalsForm, temperature_c: e.target.value })
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Escala de Glasgow (3 - 15)</label>
+                      <input
+                        type="number"
+                        className="form-input"
+                        value={vitalsForm.glasgow_score}
+                        onChange={(e) =>
+                          setVitalsForm({ ...vitalsForm, glasgow_score: e.target.value })
+                        }
+                        required
+                      />
+                    </div>
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Saturación SpO₂ (40 - 100 %)</label>
-                    <input
-                      type="number"
-                      className="form-input"
-                      value={vitalsForm.spo2_percent}
-                      onChange={(e) =>
-                        setVitalsForm({ ...vitalsForm, spo2_percent: e.target.value })
-                      }
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">PA Sistólica (40 - 300 mmHg)</label>
-                    <input
-                      type="number"
-                      className="form-input"
-                      value={vitalsForm.systolic_bp}
-                      onChange={(e) =>
-                        setVitalsForm({ ...vitalsForm, systolic_bp: e.target.value })
-                      }
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">PA Diastólica (&lt; Sistólica mmHg)</label>
-                    <input
-                      type="number"
-                      className="form-input"
-                      value={vitalsForm.diastolic_bp}
-                      onChange={(e) =>
-                        setVitalsForm({ ...vitalsForm, diastolic_bp: e.target.value })
-                      }
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Temperatura (28.0 - 44.0 °C)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      className="form-input"
-                      value={vitalsForm.temperature_c}
-                      onChange={(e) =>
-                        setVitalsForm({ ...vitalsForm, temperature_c: e.target.value })
-                      }
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Escala de Coma de Glasgow (3 - 15)</label>
-                    <input
-                      type="number"
-                      className="form-input"
-                      value={vitalsForm.glasgow_score}
-                      onChange={(e) =>
-                        setVitalsForm({ ...vitalsForm, glasgow_score: e.target.value })
-                      }
-                      required
-                    />
-                  </div>
-                </div>
 
-                <div className="form-group">
-                  <label className="form-label">Notas Clínicas de Traslado / Hallazgos Prehospitalarios</label>
-                  <textarea
-                    className="form-textarea"
-                    value={vitalsForm.clinical_notes}
-                    onChange={(e) =>
-                      setVitalsForm({ ...vitalsForm, clinical_notes: e.target.value })
-                    }
-                  />
-                </div>
+                  <div className="form-group">
+                    <label className="form-label">Observaciones Clínicas de Traslado</label>
+                    <textarea
+                      className="form-textarea"
+                      value={vitalsForm.clinical_notes}
+                      onChange={(e) =>
+                        setVitalsForm({ ...vitalsForm, clinical_notes: e.target.value })
+                      }
+                    />
+                  </div>
 
-                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                  <button type="submit" className="btn-tactile btn-danger">
-                    {vm.isOfflineTunnel
-                      ? '💾 Guardar y Firmar en Cola Outbox Local (Offline)'
-                      : '🚀 Registrar Triage y Notificar Hospital (FHIR Observation)'}
-                  </button>
+                  <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                    <button type="submit" className="btn-tactile btn-danger">
+                      {vm.isOfflineTunnel
+                        ? '💾 Guardar Registro en Dispositivo (Sin Red)'
+                        : '✔ Confirmar Signos Vitales y Notificar Hospital'}
+                    </button>
 
-                  <button
-                    type="button"
-                    className="btn-tactile"
-                    onClick={() =>
-                      setVitalsForm({
-                        ...vitalsForm,
-                        systolic_bp: 85,
-                        diastolic_bp: 110,
-                      })
-                    }
-                  >
-                    🧪 Probar Validación Fallida (PA Diastólica &gt; Sistólica)
-                  </button>
-                </div>
-              </form>
+                    {arch && (
+                      <button
+                        type="button"
+                        className="btn-tactile"
+                        onClick={() =>
+                          setVitalsForm({
+                            ...vitalsForm,
+                            systolic_bp: 85,
+                            diastolic_bp: 110,
+                          })
+                        }
+                      >
+                        🧪 Simular Error Fisiológico (PA Diastólica &gt; Sistólica)
+                      </button>
+                    )}
+                  </div>
+                </form>
               )}
             </div>
           </div>
         )}
 
         {/* =====================================================================
-            VISTA 2: FICHA CLÍNICA FHIR R4 Y ARBITRAJE CLÍNICO (Mockup 2 + ADR-05)
+            VISTA 2: FICHA CLÍNICA Y CONCILIACIÓN DE ANTECEDENTES (Mockup 2)
            ===================================================================== */}
         {vm.activeTab === 'FICHA_FHIR' && patient && (
           <div className="grid-2col">
-            {/* Ficha Clínica Completa (Fiel al Mockup 2 de la página 6) */}
+            {/* Ficha Clínica Completa */}
             <div className="clinical-card">
               <div className="card-header">
                 <div>
-                  <span className="badge badge-red">⚠ ALERGIA SEVERA DOCUMENTADA: {patient.allergies}</span>
+                  <span className="badge badge-red">⚠ ALERGIA FARMACOLÓGICA: {patient.allergies}</span>
                   <h2 style={{ fontSize: '1.35rem', marginTop: '0.45rem' }}>{patient.full_name}</h2>
                   <div className="brand-subtitle">
-                    RUT: {patient.rut} · {patient.age} años ({patient.birth_date}) · Sexo: {patient.sex} · Grupo:{' '}
+                    RUT: {patient.rut} · {patient.age} años ({patient.birth_date}) · {patient.sex} · Grupo Sanguíneo:{' '}
                     {patient.blood_type}
                   </div>
                 </div>
-                <span className="badge badge-blue">Vector Versión ADR-05: v{patient.version}</span>
+                <span className="badge badge-blue">
+                  {arch ? `Vector Versión ADR-05: v${patient.version}` : `Ficha Rev. #${patient.version}`}
+                </span>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
                 <div className="vital-tile">
-                  <span className="vital-label">🩺 DIAGNÓSTICO ACTIVO EN URGENCIA (Campo Mutable Protegido)</span>
-                  <div style={{ fontWeight: 700, fontSize: '1.02rem', marginTop: '0.25rem' }}>
+                  <span className="vital-label">🩺 DIAGNÓSTICO PRINCIPAL EN URGENCIA</span>
+                  <div style={{ fontWeight: 700, fontSize: '1rem', marginTop: '0.25rem' }}>
                     {patient.active_diagnosis}
                   </div>
                 </div>
 
                 <div className="vital-tile">
-                  <span className="vital-label">🧬 PATOLOGÍAS CRÓNICAS DE BASE (FHIR Condition)</span>
+                  <span className="vital-label">🧬 DIAGNÓSTICOS Y PATOLOGÍAS CRÓNICAS</span>
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.4rem' }}>
                     {patient.chronic_conditions.split(';').map((c, idx) => (
                       <span key={idx} className="badge badge-blue">
@@ -669,33 +721,36 @@ export default function App() {
                 </div>
 
                 <div className="vital-tile">
-                  <span className="vital-label">💊 MEDICACIÓN HABITUAL VIGENTE (FHIR MedicationStatement)</span>
-                  <div style={{ fontSize: '0.92rem', marginTop: '0.35rem' }}>{patient.current_medications}</div>
+                  <span className="vital-label">💊 MEDICACIÓN HABITUAL VIGENTE</span>
+                  <div style={{ fontSize: '0.92rem', marginTop: '0.3rem' }}>{patient.current_medications}</div>
                 </div>
 
                 <div className="vital-tile">
-                  <span className="vital-label">📋 PLAN DE TRATAMIENTO ACTIVO (Campo Mutable Protegido)</span>
-                  <div style={{ fontSize: '0.92rem', marginTop: '0.35rem' }}>{patient.treatment_plan}</div>
+                  <span className="vital-label">📋 PLAN TERAPÉUTICO ACTUAL</span>
+                  <div style={{ fontSize: '0.92rem', marginTop: '0.3rem' }}>{patient.treatment_plan}</div>
                 </div>
               </div>
             </div>
 
-            {/* Columna Derecha: Control de Concurrencia Optimista y Cola de Arbitraje Clínico (ADR-05) */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            {/* Columna Derecha: Actualización de Antecedentes y Conciliación */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
               <div className="clinical-card">
                 <div className="card-header">
                   <div className="card-title">
-                    🔄 Actualizar Campo Mutable con Vector de Versión (ADR-05)
+                    {arch
+                      ? '🔄 Actualizar Campo Mutable con Vector de Versión (ADR-05)'
+                      : '✏️ Actualizar Antecedentes Clínicos del Paciente'}
                   </div>
-                  <span className="badge badge-amber">Concurrencia Optimista</span>
+                  {arch && <span className="badge badge-amber">Concurrencia Optimista</span>}
                 </div>
 
-                <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', marginBottom: '0.9rem' }}>
-                  Según el <strong>ADR-05</strong>, los campos mutables (alergias, diagnóstico activo, plan de
-                  tratamiento) no admiten fusión automática tipo <em>Last-Write-Wins</em>. Si un nodo desconectado
-                  envía una versión anterior a la versión actual del servidor (<strong>v{patient.version}</strong>), la
-                  escritura se congela y se envía a la <strong>Cola de Arbitraje Clínico</strong>.
-                </p>
+                {arch && (
+                  <p style={{ fontSize: '0.83rem', color: 'var(--text-secondary)', marginBottom: '0.85rem' }}>
+                    Según el <strong>ADR-05</strong>, los campos mutables no admiten sobrescritura automática{' '}
+                    <em>Last-Write-Wins</em>. Si un nodo desconectado envía una revisión anterior a la vigente (
+                    <strong>v{patient.version}</strong>), se desvía a la <strong>Cola de Arbitraje Clínico</strong>.
+                  </p>
+                )}
 
                 {vm.compactClinicalMode && !showMutableFormDrawer ? (
                   <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
@@ -704,25 +759,7 @@ export default function App() {
                       className="btn-tactile btn-primary"
                       onClick={() => setShowMutableFormDrawer(true)}
                     >
-                      ➕ Editar Alergia / Diagnóstico (Divulgación Progresiva)
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-tactile btn-warning"
-                      onClick={async () => {
-                        await vm.updateMutableField(
-                          'allergies',
-                          'Penicilina (Anafilaxia); Sulfas; Contraste Yodado (actualizado en Clínica)',
-                          patient.version
-                        );
-                        await vm.updateMutableField(
-                          'allergies',
-                          'Penicilina (Anafilaxia); Sulfas; Látex (agregado sin red en Ambulancia 07)',
-                          1
-                        );
-                      }}
-                    >
-                      ⚡ Demostrar Conflicto Ambulancia vs Clínica (1-Click ADR-05)
+                      ➕ Modificar Alergias, Diagnóstico o Plan
                     </button>
                   </div>
                 ) : (
@@ -735,94 +772,85 @@ export default function App() {
                       vm.updateMutableField(mutableForm.field_name, mutableForm.new_value, expectedVer);
                     }}
                   >
-                    {vm.compactClinicalMode && (
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.5rem' }}>
-                        <button
-                          type="button"
-                          className="device-pill"
-                          onClick={() => setShowMutableFormDrawer(false)}
-                        >
-                          ▲ Minimizar Editor
-                        </button>
+                    <div className="form-group">
+                      <label className="form-label">Sección del Expediente</label>
+                      <select
+                        className="form-select"
+                        value={mutableForm.field_name}
+                        onChange={(e) => setMutableForm({ ...mutableForm, field_name: e.target.value })}
+                      >
+                        <option value="allergies">Alergias Medicamentosas</option>
+                        <option value="active_diagnosis">Diagnóstico Activo</option>
+                        <option value="treatment_plan">Plan de Tratamiento</option>
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Información Clínica Actualizada</label>
+                      <textarea
+                        className="form-textarea"
+                        value={mutableForm.new_value}
+                        onChange={(e) => setMutableForm({ ...mutableForm, new_value: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    {arch && (
+                      <div className="form-group">
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            checked={mutableForm.simulate_stale_version}
+                            onChange={(e) =>
+                              setMutableForm({ ...mutableForm, simulate_stale_version: e.target.checked })
+                            }
+                            style={{ width: '18px', height: '18px' }}
+                          />
+                          <span style={{ fontSize: '0.84rem', color: 'var(--accent-amber)', fontWeight: 600 }}>
+                            Simular envío desde ambulancia con revisión anterior (v
+                            {Math.max(1, patient.version - 1)} vs v{patient.version})
+                          </span>
+                        </label>
                       </div>
                     )}
-                  <div className="form-group">
-                    <label className="form-label">Campo Clínico Mutable a Modificar</label>
-                    <select
-                      className="form-select"
-                      value={mutableForm.field_name}
-                      onChange={(e) => setMutableForm({ ...mutableForm, field_name: e.target.value })}
-                    >
-                      <option value="allergies">Lista de Alergias Medicamentosas (allergies)</option>
-                      <option value="active_diagnosis">Diagnóstico Activo (active_diagnosis)</option>
-                      <option value="treatment_plan">Plan de Tratamiento (treatment_plan)</option>
-                    </select>
-                  </div>
 
-                  <div className="form-group">
-                    <label className="form-label">Nuevo Valor Clínico Propuesto</label>
-                    <textarea
-                      className="form-textarea"
-                      value={mutableForm.new_value}
-                      onChange={(e) => setMutableForm({ ...mutableForm, new_value: e.target.value })}
-                      required
-                    />
-                  </div>
+                    <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
+                      <button type="submit" className="btn-tactile btn-primary">
+                        Guardar Cambios en Ficha
+                      </button>
 
-                  <div className="form-group">
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer' }}>
-                      <input
-                        type="checkbox"
-                        checked={mutableForm.simulate_stale_version}
-                        onChange={(e) =>
-                          setMutableForm({ ...mutableForm, simulate_stale_version: e.target.checked })
-                        }
-                        style={{ width: '20px', height: '20px' }}
-                      />
-                      <span style={{ fontSize: '0.86rem', color: 'var(--accent-amber)', fontWeight: 600 }}>
-                        Simular colisión de concurrencia offline (enviar versión desactualizada v
-                        {Math.max(1, patient.version - 1)} frente a servidor v{patient.version})
-                      </span>
-                    </label>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
-                    <button type="submit" className="btn-tactile btn-primary">
-                      Enviar Actualización Mutable (v
-                      {mutableForm.simulate_stale_version
-                        ? Math.max(1, patient.version - 1)
-                        : patient.version}
-                      )
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-tactile btn-warning"
-                      onClick={async () => {
-                        // Paso 1: Incrementar versión en servidor como clínica destino y Paso 2: enviar versión vieja=1
-                        await vm.updateMutableField(
-                          'allergies',
-                          'Penicilina (Anafilaxia); Sulfas; Contraste Yodado (actualizado en Clínica)',
-                          patient.version
-                        );
-                        await vm.updateMutableField(
-                          'allergies',
-                          'Penicilina (Anafilaxia); Sulfas; Látex (agregado sin red en Ambulancia 07)',
-                          1
-                        );
-                      }}
-                    >
-                      ⚡ Demostrar Conflicto Ambulancia vs Clínica (1-Click ADR-05)
-                    </button>
-                  </div>
-                </form>
+                      <button
+                        type="button"
+                        className="btn-tactile btn-warning"
+                        onClick={async () => {
+                          await vm.updateMutableField(
+                            'allergies',
+                            'Penicilina (Anafilaxia); Sulfas; Contraste Yodado (registrado en Hospital)',
+                            patient.version
+                          );
+                          await vm.updateMutableField(
+                            'allergies',
+                            'Penicilina (Anafilaxia); Sulfas; Látex (reportado en Ambulancia 07)',
+                            1
+                          );
+                        }}
+                      >
+                        {arch
+                          ? '⚡ Demostrar Conflicto Ambulancia vs Clínica (ADR-05)'
+                          : '⚡ Simular Edición Simultánea (Ambulancia / Hospital)'}
+                      </button>
+                    </div>
+                  </form>
                 )}
               </div>
 
-              {/* Cola de Arbitraje Clínico */}
+              {/* Conciliación Médica de Antecedentes */}
               <div className={`clinical-card ${vm.pendingConflicts.length > 0 ? 'critical-border' : ''}`}>
                 <div className="card-header">
                   <div className="card-title">
-                    ⚖ Cola de Arbitraje Clínico Manual (ADR-05)
+                    {arch
+                      ? '⚖ Cola de Arbitraje Clínico Manual (ADR-05)'
+                      : '⚖ Conciliación Médica de Antecedentes Simultáneos'}
                   </div>
                   <span className={`badge ${vm.pendingConflicts.length > 0 ? 'badge-red' : 'badge-green'}`}>
                     {vm.pendingConflicts.length} Pendientes
@@ -830,33 +858,31 @@ export default function App() {
                 </div>
 
                 {vm.pendingConflicts.length === 0 ? (
-                  <p style={{ fontSize: '0.86rem', color: 'var(--text-secondary)' }}>
-                    No existen conflictos de vectores de versión pendientes de conciliación para este paciente.
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                    El expediente se encuentra conciliado y sin ediciones simultáneas pendientes de revisión.
                   </p>
                 ) : (
                   vm.pendingConflicts.map((conf) => {
                     const currentRes = resolutionMap[conf.id] || {
                       chosen: `${conf.server_value}; ${conf.client_proposed_value}`,
-                      notes: 'Se fusionan clínicamente ambos hallazgos de alergia (Hospital + Ambulancia) para preservar seguridad del paciente.',
+                      notes: 'Se unifican ambos antecedentes clínicos reportados en traslado y recepción hospitalaria.',
                     };
                     return (
                       <div key={conf.id} className="vital-tile critical" style={{ marginBottom: '0.85rem' }}>
-                        <div style={{ fontWeight: 700, fontSize: '0.92rem' }}>
-                          Conflicto #{conf.id} en campo <code>{conf.field_name}</code> (Cliente envió v
-                          {conf.client_expected_version} vs Servidor v{conf.server_current_version})
+                        <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>
+                          Edición simultánea detectada en <code>{conf.field_name}</code>
                         </div>
-                        <div style={{ fontSize: '0.82rem', marginTop: '0.4rem' }}>
+                        <div style={{ fontSize: '0.82rem', marginTop: '0.35rem' }}>
                           <div>
-                            • <strong>Versión en Servidor:</strong> {conf.server_value}
+                            • <strong>Registro actual en Hospital:</strong> {conf.server_value}
                           </div>
                           <div>
-                            • <strong>Versión Propuesta por {conf.submitted_by}:</strong>{' '}
-                            {conf.client_proposed_value}
+                            • <strong>Registro enviado por {conf.submitted_by}:</strong> {conf.client_proposed_value}
                           </div>
                         </div>
 
-                        <div className="form-group" style={{ marginTop: '0.65rem' }}>
-                          <label className="form-label">Valor Clínico Conciliado Definitivo</label>
+                        <div className="form-group" style={{ marginTop: '0.6rem' }}>
+                          <label className="form-label">Antecedente Clínico Unificado</label>
                           <input
                             className="form-input"
                             value={currentRes.chosen}
@@ -869,7 +895,7 @@ export default function App() {
                           />
                         </div>
                         <div className="form-group">
-                          <label className="form-label">Justificación Médica para Auditoría Forense</label>
+                          <label className="form-label">Nota Médica de Respaldo</label>
                           <input
                             className="form-input"
                             value={currentRes.notes}
@@ -888,7 +914,7 @@ export default function App() {
                             vm.resolveClinicalConflict(conf.id, currentRes.chosen, currentRes.notes)
                           }
                         >
-                          ✔ Firmar Conciliación Médica (Solo Rol Médico)
+                          ✔ Confirmar y Firmar Conciliación Médica
                         </button>
                       </div>
                     );
@@ -900,64 +926,65 @@ export default function App() {
         )}
 
         {/* =====================================================================
-            VISTA 3: TELECONSULTA DE URGENCIA Y ÓRDENES MÉDICAS (Mockup 3 + ADR-03)
+            VISTA 3: TELECONSULTA Y ÓRDENES MÉDICAS (Mockup 3)
            ===================================================================== */}
         {vm.activeTab === 'TELECONSULTA' && patient && (
           <div className="grid-2col">
-            {/* Consola de Videoconferencia WebRTC SFU + Subtitulado en Vivo (Mockup 3, pág. 6) */}
+            {/* Consola de Videoconferencia */}
             <div className="clinical-card">
               <div className="card-header">
                 <div>
-                  <div className="brand-subtitle">UNIDAD MÓVIL 07 · TELECONSULTA CIFRADA SRTP/WebRTC</div>
-                  <div className="card-title">Sala Activa: SFU-SALA-MOVIL-07-URG (ICE Restart 120s Activo)</div>
+                  <div className="brand-subtitle">UNIDAD MÓVIL 07 · TELECONSULTA EN RUTA</div>
+                  <div className="card-title">
+                    {arch
+                      ? 'Sala Activa: SFU-SALA-MOVIL-07-URG (WebRTC / SRTP + ICE Restart 120s)'
+                      : 'Conexión en Vivo con Especialista de Turno'}
+                  </div>
                 </div>
-                <span className="badge badge-green">● ENLACE ESTABLE · 38 ms</span>
+                <span className="badge badge-green">● CONECTADO · 38 ms</span>
               </div>
 
-              {/* Visor Simulado del Especialista en Vivo (Fiel al Mockup 3) */}
               <div
                 style={{
                   backgroundColor: '#070b12',
                   border: '1px solid var(--border-subtle)',
                   borderRadius: '10px',
-                  padding: '2rem 1.5rem',
+                  padding: '1.85rem 1.4rem',
                   textAlign: 'center',
                   position: 'relative',
                 }}
               >
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: '12px',
-                    left: '12px',
-                  }}
-                >
-                  <span className="badge badge-red">● REC CIFRADO AES-256 · 04:12</span>
+                <div style={{ position: 'absolute', top: '12px', left: '12px' }}>
+                  <span className="badge badge-red">● EN VIVO · 04:12</span>
                 </div>
 
-                <div style={{ fontSize: '3.2rem', marginBottom: '0.5rem' }}>👩‍⚕️📡</div>
-                <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>
-                  Dra. Elena Herrera Guzmán — Cardiología & Telemedicina de Urgencia
+                <div style={{ fontSize: '3rem', marginBottom: '0.4rem' }}>👩‍⚕️📡</div>
+                <div style={{ fontWeight: 700, fontSize: '1.08rem' }}>
+                  Dra. Elena Herrera Guzmán — Cardiología y Urgencia
                 </div>
-                <div className="brand-subtitle" style={{ marginTop: '0.25rem' }}>
-                  Flujo de Media: SRTP/UDP vía Clúster SFU Multi-AZ (ADR-07 / ADR-08)
+                <div className="brand-subtitle" style={{ marginTop: '0.2rem' }}>
+                  {arch
+                    ? 'Transporte Multimedia: SRTP/UDP vía Clúster SFU Multi-AZ (ADR-07 / ADR-08)'
+                    : 'Audio y Video Cifrado de Baja Latencia'}
                 </div>
 
-                {/* Subtitulado en Vivo Desacoplado (Solución Problema Crítico #2: Ruido de sirena y respirador) */}
+                {/* Subtitulado Clínico en Vivo */}
                 <div
                   style={{
-                    marginTop: '1.5rem',
-                    padding: '0.9rem 1.15rem',
+                    marginTop: '1.35rem',
+                    padding: '0.85rem 1.1rem',
                     backgroundColor: 'rgba(15, 23, 42, 0.92)',
                     border: '1px solid var(--accent-blue)',
                     borderRadius: '8px',
                     textAlign: 'left',
                   }}
                 >
-                  <div style={{ fontSize: '0.74rem', color: 'var(--accent-green)', fontWeight: 700 }}>
-                    💬 SUBTITULADO CLÍNICO EN VIVO (Doble Codificación ante Ruido de Sirena — Sección 2.2 #2):
+                  <div style={{ fontSize: '0.73rem', color: 'var(--accent-green)', fontWeight: 700 }}>
+                    {arch
+                      ? '💬 SUBTITULADO CLÍNICO EN VIVO (Doble Codificación ante Ruido de Sirena — Sección 2.2 #2):'
+                      : '💬 TRANSCRIPCIÓN EN VIVO DEL ESPECIALISTA:'}
                   </div>
-                  <div style={{ fontSize: '0.96rem', fontWeight: 600, marginTop: '0.25rem' }}>
+                  <div style={{ fontSize: '0.95rem', fontWeight: 600, marginTop: '0.2rem' }}>
                     {patient.orders.length > 0
                       ? `Especialista (${patient.orders[patient.orders.length - 1].author_name}): "${
                           patient.orders[patient.orders.length - 1].medication_or_action
@@ -967,42 +994,45 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Historial de Órdenes y Directivas del Episodio */}
-              <div style={{ marginTop: '1.15rem' }}>
-                <div className="card-title" style={{ marginBottom: '0.6rem' }}>
-                  📜 Órdenes Médicas y Directivas Registradas en el Episodio ({patient.orders.length})
+              {/* Historial de Indicaciones */}
+              <div style={{ marginTop: '1.1rem' }}>
+                <div className="card-title" style={{ marginBottom: '0.55rem' }}>
+                  📜 Indicaciones y Prescripciones del Episodio ({patient.orders.length})
                 </div>
                 {patient.orders.map((ord) => (
-                  <div key={ord.id} className="vital-tile" style={{ marginBottom: '0.6rem' }}>
+                  <div key={ord.id} className="vital-tile" style={{ marginBottom: '0.55rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span className="badge badge-blue">{ord.order_type}</span>
-                      <span className="brand-subtitle">{ord.author_name} ({ord.author_role})</span>
+                      <span className="brand-subtitle">{ord.author_name}</span>
                     </div>
-                    <div style={{ fontWeight: 700, marginTop: '0.35rem' }}>
-                      {ord.medication_or_action} — <span style={{ color: 'var(--accent-green)' }}>{ord.dosage_and_route}</span>
+                    <div style={{ fontWeight: 700, marginTop: '0.3rem' }}>
+                      {ord.medication_or_action} —{' '}
+                      <span style={{ color: 'var(--accent-green)' }}>{ord.dosage_and_route}</span>
                     </div>
-                    <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
-                      Justificación: {ord.clinical_justification}
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>
+                      Indicación: {ord.clinical_justification}
                     </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Columna Derecha: Emisión de Orden Médica con Verificación Transaccional de Alergias (ADR-03) */}
+            {/* Columna Derecha: Emisión de Orden Médica */}
             <div className="clinical-card">
               <div className="card-header">
                 <div className="card-title">
-                  💉 Emitir Orden Médica / Prescripción Electrónica (Servicio Cohesivo Expediente-Órdenes ADR-03)
+                  {arch
+                    ? '💉 Emitir Orden Médica (Servicio Cohesivo Expediente-Órdenes ADR-03)'
+                    : '💉 Registrar Indicación Médica o Receta Electrónica'}
                 </div>
-                <span className="badge badge-amber">Invariante ACID</span>
+                <span className="badge badge-amber">
+                  {arch ? 'Invariante ACID' : 'Control Farmacológico Activo'}
+                </span>
               </div>
 
-              <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', marginBottom: '0.9rem' }}>
-                Según el <strong>ADR-03</strong>, el servicio mantiene unidos <em>Expediente Clínico</em> y{' '}
-                <em>Órdenes</em> porque comparten invariantes de seguridad que no toleran consistencia eventual: toda
-                prescripción verifica inmediatamente las alergias activas del paciente (<strong>{patient.allergies}</strong>)
-                y bloquea contraindicaciones cruzadas.
+              <p style={{ fontSize: '0.83rem', color: 'var(--text-secondary)', marginBottom: '0.85rem' }}>
+                Alergias registradas del paciente: <strong style={{ color: '#fca5a5' }}>{patient.allergies}</strong>. El
+                sistema verifica automáticamente contraindicaciones cruzadas antes de autorizar cualquier prescripción.
               </p>
 
               <form
@@ -1012,21 +1042,21 @@ export default function App() {
                 }}
               >
                 <div className="form-group">
-                  <label className="form-label">Tipo de Orden FHIR</label>
+                  <label className="form-label">Tipo de Indicación</label>
                   <select
                     className="form-select"
                     value={orderForm.order_type}
                     onChange={(e) => setOrderForm({ ...orderForm, order_type: e.target.value })}
                   >
-                    <option value="FARMACO">FARMACO (MedicationRequest)</option>
-                    <option value="TELECONSULTA">TELECONSULTA (Directiva en Sala SFU)</option>
-                    <option value="PROCEDIMIENTO">PROCEDIMIENTO (ServiceRequest)</option>
-                    <option value="DERIVACION">DERIVACION (Traslado Interinstitucional)</option>
+                    <option value="FARMACO">Prescripción de Fármaco</option>
+                    <option value="TELECONSULTA">Indicación de Teleconsulta en Ruta</option>
+                    <option value="PROCEDIMIENTO">Procedimiento Clínico</option>
+                    <option value="DERIVACION">Derivación / Preparación de Box</option>
                   </select>
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Fármaco o Indicación Clínica</label>
+                  <label className="form-label">Medicamento o Acción Clínica</label>
                   <input
                     className="form-input"
                     value={orderForm.medication_or_action}
@@ -1036,7 +1066,7 @@ export default function App() {
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Posología y Vía de Administración</label>
+                  <label className="form-label">Dosis y Vía de Administración</label>
                   <input
                     className="form-input"
                     value={orderForm.dosage_and_route}
@@ -1057,7 +1087,7 @@ export default function App() {
 
                 <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
                   <button type="submit" className="btn-tactile btn-primary">
-                    ✍ Firmar y Emitir Orden Médica
+                    ✍ Firmar y Emitir Indicación
                   </button>
 
                   <button
@@ -1066,13 +1096,15 @@ export default function App() {
                     onClick={() =>
                       vm.submitMedicalOrder({
                         order_type: 'FARMACO',
-                        medication_or_action: 'Amoxicilina / Ácido Clavulánico 1g EV (Betalactámico)',
+                        medication_or_action: 'Amoxicilina / Ácido Clavulánico 1g EV',
                         dosage_and_route: '1g endovenoso cada 8 horas',
-                        clinical_justification: 'Prueba de bloqueo automático por alergia a Penicilina (ADR-03)',
+                        clinical_justification: 'Evaluación de alerta de alergia a Penicilina',
                       })
                     }
                   >
-                    🧪 Probar Bloqueo de Alergia a Penicilina (Amoxicilina EV)
+                    {arch
+                      ? '🧪 Probar Bloqueo de Alergia a Penicilina (ADR-03)'
+                      : '⚠ Probar Contraindicación (Amoxicilina EV)'}
                   </button>
                 </div>
               </form>
@@ -1081,17 +1113,21 @@ export default function App() {
         )}
 
         {/* =====================================================================
-            VISTA 4: LEDGER DE AUDITORÍA FORENSE INMUTABLE (ADR-03 / ADR-08 / Observer)
+            VISTA 4: REGISTRO DE AUDITORÍA FORENSE
            ===================================================================== */}
         {vm.activeTab === 'AUDITORIA' && (
           <div className="clinical-card">
             <div className="card-header">
               <div>
                 <div className="card-title">
-                  🔗 Ledger de Auditoría Forense Inmutable (Hash-Encadenado SHA-256 — ADR-03 y ADR-08)
+                  {arch
+                    ? '🔗 Ledger de Auditoría Forense Inmutable (Hash-Encadenado SHA-256 — ADR-03 y ADR-08)'
+                    : '🛡 Registro Forense de Accesos y Modificaciones Clínicas'}
                 </div>
                 <div className="brand-subtitle">
-                  Generado desacopladamente mediante el Patrón Observer (ForensicAuditLedgerObserver)
+                  {arch
+                    ? 'Generado desacopladamente mediante el Patrón Observer (ForensicAuditLedgerObserver)'
+                    : 'Trazabilidad inmutable de seguridad de datos de pacientes (Normativa HIPAA)'}
                 </div>
               </div>
               <button
@@ -1099,16 +1135,15 @@ export default function App() {
                 className="btn-tactile btn-primary"
                 onClick={() => vm.refreshClinicalData()}
               >
-                🔍 Re-verificar Integridad Criptográfica SHA-256
+                🔍 Verificar Integridad del Registro
               </button>
             </div>
 
             {!vm.auditReport ? (
               <div className="notification-banner warning">
                 <div>
-                  <strong>Acceso Restringido por RBAC:</strong> El rol actual ({user.role}) no posee privilegios de
-                  inspección criptográfica completa del Ledger Forense. Inicie sesión como{' '}
-                  <code>auditor.hipaa</code>, <code>dr.valdivia</code> o <code>dra.herrera</code> para auditar la cadena.
+                  <strong>Permiso Restringido:</strong> Su perfil actual ({user.role}) no cuenta con autorización para
+                  inspeccionar la bitácora forense completa. Ingrese con perfil de Oficial de Privacidad o Médico.
                 </div>
               </div>
             ) : (
@@ -1120,11 +1155,11 @@ export default function App() {
                   <div>
                     <div style={{ fontWeight: 800 }}>
                       {vm.auditReport.is_valid
-                        ? '✔ CADENA CRIPTOGRÁFICA ÍNTEGRA (HIPAA Security Rule Compliant)'
-                        : '❌ ALERTA FORENSE: ADULTERACIÓN DETECTADA EN CADENA'}
+                        ? '✔ REGISTRO DE AUDITORÍA ÍNTEGRO Y VERIFICADO (0 ADULTERACIONES)'
+                        : '❌ ALERTA DE SEGURIDAD: ALTERACIÓN DETECTADA EN BITÁCORA'}
                     </div>
-                    <div style={{ fontSize: '0.86rem', marginTop: '0.2rem' }}>
-                      {vm.auditReport.status_message} · Último Hash Raíz:{' '}
+                    <div style={{ fontSize: '0.85rem', marginTop: '0.2rem' }}>
+                      {vm.auditReport.status_message} · Sello Criptográfico Actual:{' '}
                       <code className="hash-code">{vm.auditReport.latest_hash}</code>
                     </div>
                   </div>
@@ -1134,13 +1169,13 @@ export default function App() {
                   <table className="ledger-table">
                     <thead>
                       <tr>
-                        <th># Seq</th>
-                        <th>Timestamp UTC</th>
-                        <th>Actor (Rol RBAC)</th>
-                        <th>Evento Clínico / Seguridad</th>
-                        <th>Recurso FHIR</th>
-                        <th>Detalle Auditado</th>
-                        <th>Prev Hash → Current Hash (SHA-256)</th>
+                        <th>#</th>
+                        <th>Fecha y Hora UTC</th>
+                        <th>Profesional</th>
+                        <th>Operación</th>
+                        <th>Expediente / Recurso</th>
+                        <th>Detalle Clínico</th>
+                        <th>Sello SHA-256 Encadenado</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1171,14 +1206,14 @@ export default function App() {
                           <td style={{ maxWidth: '340px' }}>{entry.details}</td>
                           <td>
                             <div className="hash-code" title={entry.prev_hash}>
-                              Prev: {entry.prev_hash.slice(0, 14)}...
+                              Ant: {entry.prev_hash.slice(0, 12)}...
                             </div>
                             <div
                               className="hash-code"
                               style={{ marginTop: '0.2rem', color: '#6ee7b7' }}
                               title={entry.current_hash}
                             >
-                              Curr: {entry.current_hash.slice(0, 14)}...
+                              Act: {entry.current_hash.slice(0, 12)}...
                             </div>
                           </td>
                         </tr>
